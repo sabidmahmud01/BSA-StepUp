@@ -271,7 +271,7 @@ function generateTrack() {
   const track = normalizeTrack({
     ...route,
     distance: Number(distance),
-    host: "Sabid",
+    host: "BSA Team",
     start: "Music Building, Texas State University",
     publishedAt: new Date().toISOString()
   });
