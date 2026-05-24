@@ -11,6 +11,16 @@ function createSupabaseClient() {
   return window.supabase.createClient(window.BSA_SUPABASE_URL, window.BSA_SUPABASE_ANON_KEY);
 }
 
+function escapeHtml(value = "") {
+  return String(value).replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[character]));
+}
+
 function getPublishedTrack() {
   const saved = localStorage.getItem(routeStorageKey);
 
@@ -46,7 +56,7 @@ function addRouteMarker(layerGroup, point, label, popupText, className) {
   const size = isStartFinish ? 44 : 36;
   const icon = L.divIcon({
     className: `route-marker ${className}`,
-    html: `<span>${label}</span>`,
+    html: `<span>${escapeHtml(label)}</span>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
     popupAnchor: [0, -18]
@@ -78,7 +88,7 @@ function addParticipantMarker(layerGroup, participant) {
 
   const icon = L.divIcon({
     className: "participant-position-marker",
-    html: `<span>${participant.name.slice(0, 1).toUpperCase()}</span>`,
+    html: `<span>${escapeHtml(participant.name.slice(0, 1).toUpperCase())}</span>`,
     iconSize: [34, 34],
     iconAnchor: [17, 17],
     popupAnchor: [0, -18]
@@ -86,7 +96,7 @@ function addParticipantMarker(layerGroup, participant) {
 
   L.marker([participant.position.lat, participant.position.lng], { icon })
     .addTo(layerGroup)
-    .bindPopup(`${participant.name}: your position`);
+    .bindPopup(`${escapeHtml(participant.name)}: your position`);
 }
 
 async function drawFullRoute(track) {
@@ -146,11 +156,17 @@ async function loadAndDrawRoute() {
   let track = getPublishedTrack();
 
   if (!track && supabaseClient) {
-    const { data } = await supabaseClient
-      .from("bsa_tracks")
-      .select("track")
-      .eq("id", "today")
-      .maybeSingle();
+    let data = null;
+
+    try {
+      ({ data } = await supabaseClient
+        .from("bsa_tracks")
+        .select("track")
+        .eq("id", "today")
+        .maybeSingle());
+    } catch {
+      data = null;
+    }
 
     if (data?.track) {
       track = normalizeTrack(data.track);

@@ -161,6 +161,16 @@ function selectedDistance() {
   return document.querySelector("input[name='distance']:checked").value;
 }
 
+function escapeHtml(value = "") {
+  return String(value).replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[character]));
+}
+
 function createId() {
   if (window.crypto?.randomUUID) {
     return window.crypto.randomUUID();
@@ -227,9 +237,13 @@ async function saveTrackRemote(track) {
     return;
   }
 
-  await supabaseClient
-    .from("bsa_tracks")
-    .upsert({ id: "today", track, updated_at: new Date().toISOString() });
+  try {
+    await supabaseClient
+      .from("bsa_tracks")
+      .upsert({ id: "today", track, updated_at: new Date().toISOString() });
+  } catch {
+    elements.publishMessage.textContent = "Route saved on this device. Supabase sync is not available right now.";
+  }
 }
 
 function generateTrack() {
@@ -252,7 +266,7 @@ function generateTrack() {
   }
   updateProgress(0);
   elements.publishMessage.textContent = `Published ${track.name} for participants.`;
-  elements.participantStatus.textContent = "The host has published today's route. Meet at the Quad.";
+  elements.participantStatus.textContent = "The host has published today's route. Meet at the Music Building.";
 }
 
 function normalizeTrack(track) {
@@ -296,7 +310,7 @@ function renderTrack(scope, track) {
   routeName.textContent = track.name;
   distance.textContent = `${track.distance} mi`;
   routeDescription.textContent = `${track.description} Start: ${track.start}.`;
-  routeStops.innerHTML = track.stops.map((stop) => `<li>${stop}</li>`).join("");
+  routeStops.innerHTML = track.stops.map((stop) => `<li>${escapeHtml(stop)}</li>`).join("");
   mapLink.href = buildOpenStreetMapLink(track);
 
   const topParticipantMapLink = document.querySelector("#participantMapLinkTop");
@@ -395,18 +409,22 @@ async function saveParticipantRemote(participant) {
     return;
   }
 
-  await supabaseClient
-    .from("bsa_participants")
-    .upsert({
-      id: participant.id,
-      name: participant.name,
-      category: participant.category,
-      miles_passed: Number(participant.milesPassed || 0),
-      finished: Boolean(participant.finished),
-      live: Boolean(participant.live),
-      position: participant.position || null,
-      updated_at: participant.updatedAt || new Date().toISOString()
-    });
+  try {
+    await supabaseClient
+      .from("bsa_participants")
+      .upsert({
+        id: participant.id,
+        name: participant.name,
+        category: participant.category,
+        miles_passed: Number(participant.milesPassed || 0),
+        finished: Boolean(participant.finished),
+        live: Boolean(participant.live),
+        position: participant.position || null,
+        updated_at: participant.updatedAt || new Date().toISOString()
+      });
+  } catch {
+    elements.trackerStatus.textContent = "Saved on this device. Supabase sync is not available right now.";
+  }
 }
 
 async function deleteParticipantRemote(id) {
@@ -414,7 +432,11 @@ async function deleteParticipantRemote(id) {
     return;
   }
 
-  await supabaseClient.from("bsa_participants").delete().eq("id", id);
+  try {
+    await supabaseClient.from("bsa_participants").delete().eq("id", id);
+  } catch {
+    elements.publishMessage.textContent = "Removed locally. Supabase sync is not available right now.";
+  }
 }
 
 function currentParticipant() {
@@ -476,10 +498,18 @@ async function loadSupabaseState() {
     return;
   }
 
-  const [{ data: trackRows }, { data: participantRows }] = await Promise.all([
-    supabaseClient.from("bsa_tracks").select("track").eq("id", "today").maybeSingle(),
-    supabaseClient.from("bsa_participants").select("*").order("updated_at", { ascending: false })
-  ]);
+  let trackRows = null;
+  let participantRows = null;
+
+  try {
+    [{ data: trackRows }, { data: participantRows }] = await Promise.all([
+      supabaseClient.from("bsa_tracks").select("track").eq("id", "today").maybeSingle(),
+      supabaseClient.from("bsa_participants").select("*").order("updated_at", { ascending: false })
+    ]);
+  } catch {
+    elements.profileStatus.textContent = "Supabase sync is offline. This device will use local data.";
+    return;
+  }
 
   if (trackRows?.track) {
     const track = normalizeTrack(trackRows.track);
@@ -545,17 +575,19 @@ function renderHostParticipants() {
     .map((participant) => {
       const miles = Number(participant.milesPassed || 0).toFixed(1);
       const liveStatus = participant.live ? "Live" : "Manual";
-      const status = participant.finished ? "Finished" : `${miles} mi · ${liveStatus}`;
-      const lastSeen = participant.updatedAt ? ` · ${formatLastSeen(participant.updatedAt)}` : "";
+      const status = participant.finished ? "Finished" : `${miles} mi - ${liveStatus}`;
+      const lastSeen = participant.updatedAt ? ` - ${formatLastSeen(participant.updatedAt)}` : "";
+      const name = escapeHtml(participant.name);
+      const category = escapeHtml(participant.category);
       return `
         <li>
           <div>
-            <strong>${participant.name}</strong>
-            <span>${participant.category} · ${status}${lastSeen}</span>
+            <strong>${name}</strong>
+            <span>${category} - ${status}${lastSeen}</span>
           </div>
           <div class="participant-row-actions">
-            <button class="mark-finished-host" type="button" data-id="${participant.id}">Mark finished</button>
-            <button class="remove-participant-host" type="button" data-id="${participant.id}">Remove</button>
+            <button class="mark-finished-host" type="button" data-id="${escapeHtml(participant.id)}">Mark finished</button>
+            <button class="remove-participant-host" type="button" data-id="${escapeHtml(participant.id)}">Remove</button>
           </div>
         </li>
       `;
@@ -590,7 +622,7 @@ function renderParticipantMarkers(scope) {
     .forEach((participant) => {
       const icon = L.divIcon({
         className: `participant-position-marker ${participant.live ? "live-participant" : ""} ${participant.finished ? "finished-participant" : ""}`,
-        html: `<span>${participant.name.slice(0, 1).toUpperCase()}</span>`,
+        html: `<span>${escapeHtml(participant.name.slice(0, 1).toUpperCase())}</span>`,
         iconSize: [34, 34],
         iconAnchor: [17, 17],
         popupAnchor: [0, -18]
@@ -598,7 +630,7 @@ function renderParticipantMarkers(scope) {
 
       L.marker([participant.position.lat, participant.position.lng], { icon })
         .addTo(state.participantLayers)
-        .bindPopup(`${participant.name}: ${participant.finished ? "Finished" : `${Number(participant.milesPassed || 0).toFixed(1)} mi`}`);
+        .bindPopup(`${escapeHtml(participant.name)}: ${participant.finished ? "Finished" : `${Number(participant.milesPassed || 0).toFixed(1)} mi`}`);
     });
 }
 
@@ -612,7 +644,7 @@ function addRouteMarker(layerGroup, point, label, popupText, className) {
   const size = isStartFinish ? 44 : 36;
   const icon = L.divIcon({
     className: `route-marker ${className}`,
-    html: `<span>${label}</span>`,
+    html: `<span>${escapeHtml(label)}</span>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
     popupAnchor: [0, -18]
@@ -853,14 +885,15 @@ function renderBoard(category) {
   board.innerHTML = sorted
     .map((person, index) => {
       const miles = Number.isInteger(person.miles) ? person.miles : person.miles.toFixed(1);
+      const name = escapeHtml(person.name);
       const removeButton = isHostMode
-        ? `<button class="remove-person" type="button" data-category="${category}" data-id="${person.id}" aria-label="Remove ${person.name}">Remove</button>`
+        ? `<button class="remove-person" type="button" data-category="${escapeHtml(category)}" data-id="${escapeHtml(person.id)}" aria-label="Remove ${name}">Remove</button>`
         : "";
 
       return `
         <li>
           <span class="rank">${index + 1}</span>
-          <strong>${person.name}</strong>
+          <strong>${name}</strong>
           <span class="miles">${miles} mi</span>
           ${removeButton}
         </li>
