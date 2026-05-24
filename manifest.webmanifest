@@ -1,0 +1,17 @@
+{
+  "name": "BSA StepUp",
+  "short_name": "BSA StepUp",
+  "description": "Bangladesh Student Association walking challenge app for Texas State University.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0d2a1e",
+  "theme_color": "#0d2a1e",
+  "icons": [
+    {
+      "src": "App logo.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

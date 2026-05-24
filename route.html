@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d2a1e">
+    <title>BSA StepUp Route</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIINfQXVgM1P4gqD6G2EswVxj2u3ePNF/28="
+      crossorigin=""
+    >
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body class="route-page">
+    <main class="route-shell">
+      <section class="route-topbar">
+        <div>
+          <span class="label">BSA StepUp</span>
+          <h1 id="routePageTitle">Today's Route</h1>
+        </div>
+        <a class="secondary-link" href="index.html">Back to app</a>
+      </section>
+
+      <section class="route-full-map">
+        <div id="routeFullMap" class="map-canvas" aria-label="Full route map"></div>
+        <div id="routeFullFallback" class="map-fallback">
+          <strong>No route published yet.</strong>
+          <span>Ask the host to generate today's track first.</span>
+        </div>
+      </section>
+    </main>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="route-map.js"></script>
+  </body>
+</html>

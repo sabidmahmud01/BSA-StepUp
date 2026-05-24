@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d2a1e">
+    <title>BSA StepUp</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIINfQXVgM1P4gqD6G2EswVxj2u3ePNF/28="
+      crossorigin=""
+    >
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar" aria-label="App header">
+        <div class="brand-lockup">
+          <img class="brand-mark" src="App logo.png" alt="BSA San Marcos logo">
+          <div>
+            <p class="eyebrow">Bangladesh Student Association</p>
+            <h1>BSA StepUp</h1>
+          </div>
+        </div>
+
+        <button id="leaveHost" class="host-exit hidden" type="button">Exit host mode</button>
+      </section>
+
+      <section class="hero" aria-label="BSA StepUp overview">
+        <div class="hero-copy">
+          <span class="label">San Marcos, Texas</span>
+          <h2>Daily walks from the Quad for community, cardio, and BSA energy.</h2>
+          <p>
+            Participants see today&apos;s route, follow the Leaflet map, and track miles completed and miles left.
+          </p>
+        </div>
+        <div class="host-card">
+          <span class="label">Today&apos;s host</span>
+          <strong>Sabid</strong>
+          <span>Secretary, BSA</span>
+        </div>
+      </section>
+
+      <section id="hostView" class="view-grid hidden" aria-label="Host dashboard">
+        <article class="control-panel">
+          <div class="panel-header">
+            <div>
+              <span class="label">Host dashboard</span>
+              <h2>Generate Today&apos;s Track</h2>
+            </div>
+            <span class="status-pill">Starts at the Quad</span>
+          </div>
+
+          <fieldset class="distance-picker">
+            <legend>Choose today&apos;s distance</legend>
+            <label>
+              <input type="radio" name="distance" value="1" checked>
+              <span>1 mile</span>
+            </label>
+            <label>
+              <input type="radio" name="distance" value="1.5">
+              <span>1.5 miles</span>
+            </label>
+            <label>
+              <input type="radio" name="distance" value="2">
+              <span>2 miles</span>
+            </label>
+          </fieldset>
+
+          <button id="generateTrack" class="primary-action" type="button">Generate and publish today&apos;s track</button>
+          <p id="publishMessage" class="helper-text">Participants will see the latest published track in their interface.</p>
+
+          <div class="host-participants">
+            <div class="panel-header compact-header">
+              <div>
+                <span class="label">Live tracker</span>
+                <h3>Participants</h3>
+              </div>
+            </div>
+            <ul id="hostParticipantList" class="participant-list"></ul>
+          </div>
+        </article>
+
+        <article class="track-card" aria-live="polite">
+          <div class="card-heading">
+            <div>
+              <span class="label">Published track</span>
+              <h2 id="hostRouteName">No track published yet</h2>
+            </div>
+            <strong id="hostDistance" class="distance-badge">-- mi</strong>
+          </div>
+          <div class="map-frame">
+            <div id="hostMap" class="map-canvas" role="img" aria-label="Map for host route"></div>
+            <div id="hostMapFallback" class="map-fallback">
+              <strong>Generate today&apos;s route.</strong>
+              <span>The Leaflet map will draw the route here.</span>
+            </div>
+          </div>
+          <div class="track-details">
+            <p id="hostRouteDescription">Generate a route to publish it for today&apos;s participants.</p>
+            <ol id="hostRouteStops"></ol>
+            <a id="hostMapLink" class="map-link" href="#" target="_blank" rel="noreferrer">Open full route map</a>
+          </div>
+        </article>
+      </section>
+
+      <section id="participantView" class="view-grid" aria-label="Participant dashboard">
+        <article class="participant-card">
+          <span class="label">Participant view</span>
+          <h2>BSA StepUp</h2>
+          <p id="participantStatus">Waiting for the host to publish today&apos;s route.</p>
+
+          <form id="profileForm" class="profile-form">
+            <label>
+              Temporary profile
+              <input id="profileName" type="text" placeholder="Your name" required>
+            </label>
+            <label>
+              Category
+              <select id="profileCategory">
+                <option value="female">Female</option>
+                <option value="male">Male</option>
+              </select>
+            </label>
+            <button type="submit">Save profile</button>
+          </form>
+          <p id="profileStatus" class="helper-text">Create a temporary profile so the host can track your progress.</p>
+
+          <div class="progress-card">
+            <div class="progress-topline">
+              <span>Miles passed</span>
+              <strong id="milesPassedLabel">0.0 mi</strong>
+            </div>
+            <input id="milesPassed" type="range" min="0" max="2" step="0.1" value="0">
+            <div class="progress-stats">
+              <span><strong id="milesLeft">--</strong> left</span>
+              <span><strong id="progressPercent">0%</strong> complete</span>
+            </div>
+            <div class="tracker-actions">
+              <button id="useLocation" class="secondary-action" type="button">Start live location</button>
+            </div>
+            <p id="trackerStatus" class="helper-text">Create a profile, then start live location so the host can track you.</p>
+          </div>
+
+          <div class="participant-actions">
+            <button id="refreshParticipant" class="secondary-action" type="button">Refresh track</button>
+            <a id="participantMapLinkTop" class="secondary-link" href="#" target="_blank" rel="noreferrer">Open full route map</a>
+          </div>
+        </article>
+
+        <article class="track-card" aria-live="polite">
+          <div class="card-heading">
+            <div>
+              <span class="label">Route for today</span>
+              <h2 id="participantRouteName">No track published yet</h2>
+            </div>
+            <strong id="participantDistance" class="distance-badge">-- mi</strong>
+          </div>
+          <div class="map-frame">
+            <div id="participantMap" class="map-canvas" role="img" aria-label="Map for participant route"></div>
+            <div id="participantMapFallback" class="map-fallback">
+              <strong>Waiting for today&apos;s route.</strong>
+              <span>The map will appear after the host publishes a track.</span>
+            </div>
+          </div>
+          <div class="track-details">
+            <p id="participantRouteDescription">Once the host publishes a route, it will appear here.</p>
+            <ol id="participantRouteStops"></ol>
+            <a id="participantMapLink" class="map-link" href="#" target="_blank" rel="noreferrer">Open full route map</a>
+          </div>
+        </article>
+      </section>
+
+      <section class="quick-info" aria-label="Program highlights">
+        <div>
+          <span class="label">Why join</span>
+          <strong>Socializing activity</strong>
+          <p>Meet BSA members outside formal events and make campus feel smaller.</p>
+        </div>
+        <div>
+          <span class="label">Fitness</span>
+          <strong>A bit of cardio</strong>
+          <p>Low-pressure walking for anyone who does not always have time to work out.</p>
+        </div>
+        <div>
+          <span class="label">Perks</span>
+          <strong>Refreshments included</strong>
+          <p>Water and light snacks after the walk so people can hang around and talk.</p>
+        </div>
+      </section>
+
+      <section class="leaderboard-section" aria-labelledby="leaderboard-title">
+        <div class="section-heading">
+          <div>
+            <span class="label">Competition</span>
+            <h2 id="leaderboard-title">Gender-Based Leaderboards</h2>
+          </div>
+          <p>Top walkers in each category compete for an Amazon gift card.</p>
+        </div>
+
+        <div class="leaderboard-grid">
+          <article class="leaderboard">
+            <div class="leaderboard-title">
+              <h3>Female</h3>
+              <span>Amazon gift card prize</span>
+            </div>
+            <ol id="femaleBoard"></ol>
+          </article>
+
+          <article class="leaderboard">
+            <div class="leaderboard-title">
+              <h3>Male</h3>
+              <span>Amazon gift card prize</span>
+            </div>
+            <ol id="maleBoard"></ol>
+          </article>
+        </div>
+      </section>
+
+      <section id="signupSection" class="signup-section hidden" aria-labelledby="signup-title">
+        <div>
+          <span class="label">Host tools</span>
+          <h2 id="signup-title">Add a Walker</h2>
+          <p>Use this during an event to preview how participation points feed the leaderboard.</p>
+        </div>
+        <form id="walkerForm" class="walker-form">
+          <label>
+            Name
+            <input id="walkerName" type="text" placeholder="Participant name" required>
+          </label>
+          <label>
+            Category
+            <select id="walkerCategory">
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+            </select>
+          </label>
+          <label>
+            Miles
+            <input id="walkerMiles" type="number" min="0.5" max="100" step="0.5" value="1" required>
+          </label>
+          <button type="submit">Add to leaderboard</button>
+        </form>
+      </section>
+    </main>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
