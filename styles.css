@@ -706,6 +706,12 @@ h3 {
   border-bottom: 1px solid var(--line);
 }
 
+.leaderboard li.empty-board {
+  display: block;
+  color: var(--muted);
+  font-weight: 850;
+}
+
 .rank {
   display: grid;
   width: 34px;

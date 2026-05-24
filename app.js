@@ -2,7 +2,8 @@ const storageKeys = {
   track: "bsa-stepup-todays-track",
   boards: "bsa-stepup-leaderboards",
   participants: "bsa-stepup-participants",
-  currentParticipant: "bsa-stepup-current-participant"
+  currentParticipant: "bsa-stepup-current-participant",
+  deviceParticipant: "bsa-stepup-device-participant"
 };
 const supabaseClient = createSupabaseClient();
 
@@ -108,17 +109,10 @@ const routeOptions = {
 };
 
 const defaultBoards = {
-  female: [
-    { id: createId(), name: "Nadia R.", miles: 28 },
-    { id: createId(), name: "Tanzila A.", miles: 24.5 },
-    { id: createId(), name: "Maliha C.", miles: 21 }
-  ],
-  male: [
-    { id: createId(), name: "Rafi H.", miles: 31 },
-    { id: createId(), name: "Sakib M.", miles: 26 },
-    { id: createId(), name: "Arman K.", miles: 22.5 }
-  ]
+  female: [],
+  male: []
 };
+const seedLeaderboardNames = new Set(["Nadia R.", "Tanzila A.", "Maliha C.", "Rafi H.", "Sakib M.", "Arman K."]);
 
 const elements = {
   hostView: document.querySelector("#hostView"),
@@ -148,7 +142,9 @@ const elements = {
 
 let boards = loadBoards();
 let participants = loadParticipants();
-let currentParticipantId = localStorage.getItem(storageKeys.currentParticipant) || "";
+let currentParticipantId = localStorage.getItem(storageKeys.currentParticipant)
+  || localStorage.getItem(storageKeys.deviceParticipant)
+  || "";
 let liveLocationWatchId = null;
 let isHostMode = new URLSearchParams(window.location.search).get("host") === "1" || window.location.hash === "#host";
 let mapState = {
@@ -179,6 +175,16 @@ function createId() {
   return `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function ensureDeviceParticipantId() {
+  if (!currentParticipantId) {
+    currentParticipantId = createId();
+  }
+
+  localStorage.setItem(storageKeys.currentParticipant, currentParticipantId);
+  localStorage.setItem(storageKeys.deviceParticipant, currentParticipantId);
+  return currentParticipantId;
+}
+
 function loadBoards() {
   const saved = localStorage.getItem(storageKeys.boards);
 
@@ -187,10 +193,21 @@ function loadBoards() {
   }
 
   try {
-    return JSON.parse(saved);
+    return removeSeedBoardEntries(JSON.parse(saved));
   } catch {
     return JSON.parse(JSON.stringify(defaultBoards));
   }
+}
+
+function removeSeedBoardEntries(savedBoards) {
+  return {
+    female: Array.isArray(savedBoards?.female)
+      ? savedBoards.female.filter((person) => !seedLeaderboardNames.has(person.name))
+      : [],
+    male: Array.isArray(savedBoards?.male)
+      ? savedBoards.male.filter((person) => !seedLeaderboardNames.has(person.name))
+      : []
+  };
 }
 
 function saveBoards() {
@@ -401,6 +418,19 @@ function loadParticipants() {
 }
 
 function saveParticipants() {
+  const deduped = [];
+  const seen = new Set();
+
+  participants.forEach((participant) => {
+    if (!participant?.id || seen.has(participant.id)) {
+      return;
+    }
+
+    seen.add(participant.id);
+    deduped.push(participant);
+  });
+
+  participants = deduped;
   localStorage.setItem(storageKeys.participants, JSON.stringify(participants));
 }
 
@@ -470,13 +500,15 @@ function renderParticipantProfile() {
   const participant = currentParticipant();
 
   if (!participant) {
+    elements.profileName.value = "";
+    elements.profileCategory.value = "female";
     elements.profileStatus.textContent = "Create a temporary profile so the host can track your progress.";
     return;
   }
 
   elements.profileName.value = participant.name;
   elements.profileCategory.value = participant.category;
-  elements.profileStatus.textContent = `Tracking as ${participant.name}.`;
+  elements.profileStatus.textContent = `Profile saved for this browser as ${participant.name}.`;
   updateProgress(participant.milesPassed || 0, { persist: false });
 }
 
@@ -519,7 +551,13 @@ async function loadSupabaseState() {
   }
 
   if (participantRows) {
+    const localCurrent = currentParticipant();
     participants = participantRows.map(participantFromRemote);
+
+    if (localCurrent && !participants.some((participant) => participant.id === localCurrent.id)) {
+      participants.push(localCurrent);
+    }
+
     saveParticipants();
     renderParticipantProfile();
     renderHostParticipants();
@@ -882,6 +920,11 @@ function renderBoard(category) {
   const board = document.querySelector(`#${category}Board`);
   const sorted = [...boards[category]].sort((a, b) => b.miles - a.miles);
 
+  if (!sorted.length) {
+    board.innerHTML = "<li class=\"empty-board\">No walkers yet.</li>";
+    return;
+  }
+
   board.innerHTML = sorted
     .map((person, index) => {
       const miles = Number.isInteger(person.miles) ? person.miles : person.miles.toFixed(1);
@@ -929,6 +972,7 @@ elements.profileForm.addEventListener("submit", (event) => {
     return;
   }
 
+  const deviceParticipantId = ensureDeviceParticipantId();
   const existing = currentParticipant();
   if (existing) {
     participants = participants.map((participant) => participant.id === existing.id
@@ -936,7 +980,7 @@ elements.profileForm.addEventListener("submit", (event) => {
       : participant);
   } else {
     const participant = {
-      id: createId(),
+      id: deviceParticipantId,
       name,
       category,
       milesPassed: Number(elements.milesPassed.value || 0),
@@ -946,13 +990,12 @@ elements.profileForm.addEventListener("submit", (event) => {
       updatedAt: new Date().toISOString()
     };
     participants.push(participant);
-    currentParticipantId = participant.id;
-    localStorage.setItem(storageKeys.currentParticipant, currentParticipantId);
   }
 
   saveParticipants();
   saveParticipantRemote(currentParticipant());
   renderParticipantProfile();
+  elements.profileStatus.textContent = `Profile saved for this browser as ${name}.`;
   renderHostParticipants();
   refreshParticipantMarkers();
 });
@@ -1063,6 +1106,7 @@ elements.hostParticipantList.addEventListener("click", (event) => {
     if (currentParticipantId === removeButton.dataset.id) {
       currentParticipantId = "";
       localStorage.removeItem(storageKeys.currentParticipant);
+      localStorage.removeItem(storageKeys.deviceParticipant);
     }
     saveParticipants();
     deleteParticipantRemote(removeButton.dataset.id);
@@ -1106,7 +1150,7 @@ renderParticipantProfile();
 renderHostParticipants();
 renderBoard("female");
 renderBoard("male");
-updateProgress(0);
+updateProgress(currentParticipant()?.milesPassed || 0, { persist: false });
 applyAccessMode();
 loadSupabaseState();
 subscribeSupabaseRealtime();
