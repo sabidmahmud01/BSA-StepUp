@@ -792,6 +792,27 @@ h3 {
   font-weight: 900;
 }
 
+.profile-summary {
+  margin-top: 20px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper-strong);
+}
+
+.profile-summary strong {
+  color: var(--green-900);
+  font-size: 1.2rem;
+}
+
+.profile-summary span:last-child {
+  color: var(--muted);
+  font-weight: 850;
+  text-transform: capitalize;
+}
+
 .host-participants {
   margin-top: 22px;
   padding-top: 18px;

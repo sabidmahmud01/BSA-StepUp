@@ -125,6 +125,7 @@ const elements = {
   participantStatus: document.querySelector("#participantStatus"),
   hostParticipantList: document.querySelector("#hostParticipantList"),
   profileForm: document.querySelector("#profileForm"),
+  profileSummary: document.querySelector("#profileSummary"),
   profileName: document.querySelector("#profileName"),
   profileCategory: document.querySelector("#profileCategory"),
   profileStatus: document.querySelector("#profileStatus"),
@@ -502,13 +503,23 @@ function renderParticipantProfile() {
   if (!participant) {
     elements.profileName.value = "";
     elements.profileCategory.value = "female";
+    elements.profileForm.classList.remove("hidden");
+    elements.profileSummary.classList.add("hidden");
+    elements.profileSummary.innerHTML = "";
     elements.profileStatus.textContent = "Create a temporary profile so the host can track your progress.";
     return;
   }
 
   elements.profileName.value = participant.name;
   elements.profileCategory.value = participant.category;
-  elements.profileStatus.textContent = `Profile saved for this browser as ${participant.name}.`;
+  elements.profileForm.classList.add("hidden");
+  elements.profileSummary.classList.remove("hidden");
+  elements.profileSummary.innerHTML = `
+    <span class="label">Saved profile</span>
+    <strong>${escapeHtml(participant.name)}</strong>
+    <span>${escapeHtml(participant.category)}</span>
+  `;
+  elements.profileStatus.textContent = "This browser is already registered for the event.";
   updateProgress(participant.milesPassed || 0, { persist: false });
 }
 
@@ -965,6 +976,11 @@ elements.generateButton.addEventListener("click", generateTrack);
 
 elements.profileForm.addEventListener("submit", (event) => {
   event.preventDefault();
+  if (currentParticipant()) {
+    renderParticipantProfile();
+    return;
+  }
+
   const name = elements.profileName.value.trim();
   const category = elements.profileCategory.value;
 
@@ -995,7 +1011,6 @@ elements.profileForm.addEventListener("submit", (event) => {
   saveParticipants();
   saveParticipantRemote(currentParticipant());
   renderParticipantProfile();
-  elements.profileStatus.textContent = `Profile saved for this browser as ${name}.`;
   renderHostParticipants();
   refreshParticipantMarkers();
 });
