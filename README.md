@@ -4,18 +4,32 @@ BSA StepUp is a lightweight walking-challenge web app built for the Bangladesh S
 
 The project is designed for a real student-organization event: participants use the public link, while event staff use a hidden host view to generate routes, monitor temporary profiles, and manage the leaderboard.
 
+## Open The App
+
+Participant app:
+
+```text
+https://sabidmahmud01.github.io/BSA-StepUp/
+```
+
+Host dashboard:
+
+```text
+https://sabidmahmud01.github.io/BSA-StepUp/?host=1
+```
+
 ## Live App Flow
 
 Participants open the normal site URL:
 
 ```text
-https://your-site.netlify.app
+https://sabidmahmud01.github.io/BSA-StepUp/
 ```
 
 Hosts open the same site with host mode enabled:
 
 ```text
-https://your-site.netlify.app/?host=1
+https://sabidmahmud01.github.io/BSA-StepUp/?host=1
 ```
 
 The host publishes the route first. Participants then create one temporary profile per browser/device, view the route map, update progress, and optionally share live location if their phone allows it.
